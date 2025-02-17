@@ -5,6 +5,7 @@ import torch
 from torchvision import transforms
 from cyclegan_turbo import CycleGAN_Turbo
 from my_utils.training_utils import build_transform
+from plot_image import plot_image
 
 
 if __name__ == "__main__":
@@ -30,6 +31,8 @@ if __name__ == "__main__":
         assert args.prompt is None, 'prompt is not required when loading a pretrained model.'
         assert args.direction is None, 'direction is not required when loading a pretrained model.'
 
+    image_dict = {}
+    
     # initialize the model
     model = CycleGAN_Turbo(pretrained_name=args.model_name, pretrained_path=args.model_path)
     model.eval()
@@ -40,6 +43,7 @@ if __name__ == "__main__":
     T_val = build_transform(args.image_prep)
 
     input_image = Image.open(args.input_image).convert('RGB')
+    image_dict['input_image'] = input_image
     # translate the image
     with torch.no_grad():
         input_img = T_val(input_image)
@@ -51,8 +55,11 @@ if __name__ == "__main__":
 
     output_pil = transforms.ToPILImage()(output[0].cpu() * 0.5 + 0.5)
     output_pil = output_pil.resize((input_image.width, input_image.height), Image.LANCZOS)
+    image_dict['output_image'] = output_pil
 
     # save the output image
     bname = os.path.basename(args.input_image)
     os.makedirs(args.output_dir, exist_ok=True)
     output_pil.save(os.path.join(args.output_dir, bname))
+    
+    plot_image(image_dict)

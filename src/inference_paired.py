@@ -7,6 +7,7 @@ from torchvision import transforms
 import torchvision.transforms.functional as F
 from pix2pix_turbo import Pix2Pix_Turbo
 from image_prep import canny_from_pil
+from plot_image import plot_image
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -34,8 +35,11 @@ if __name__ == "__main__":
     if args.use_fp16:
         model.half()
 
+    image_dict = {}
+
     # make sure that the input image is a multiple of 8
     input_image = Image.open(args.input_image).convert('RGB')
+    image_dict["input_image"] = input_image
     new_width = input_image.width - input_image.width % 8
     new_height = input_image.height - input_image.height % 8
     input_image = input_image.resize((new_width, new_height), Image.LANCZOS)
@@ -46,6 +50,7 @@ if __name__ == "__main__":
         if args.model_name == 'edge_to_image':
             canny = canny_from_pil(input_image, args.low_threshold, args.high_threshold)
             canny_viz_inv = Image.fromarray(255 - np.array(canny))
+            image_dict["canny_image"] = canny_viz_inv
             canny_viz_inv.save(os.path.join(args.output_dir, bname.replace('.png', '_canny.png')))
             c_t = F.to_tensor(canny).unsqueeze(0).cuda()
             if args.use_fp16:
@@ -70,6 +75,9 @@ if __name__ == "__main__":
             output_image = model(c_t, args.prompt)
 
         output_pil = transforms.ToPILImage()(output_image[0].cpu() * 0.5 + 0.5)
+        image_dict["output_image"] = output_pil
 
     # save the output image
     output_pil.save(os.path.join(args.output_dir, bname))
+
+    plot_image(image_dict)
